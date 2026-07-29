@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "keychecker"
+version = "0.1.0"
+description = "Check the validity (and quota/plan) of API keys for recon services like Shodan, Censys, and FOFA."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "GodzofWar" }]
+keywords = ["recon", "osint", "api-keys", "shodan", "censys", "fofa", "security"]
+dependencies = [
+    "httpx>=0.27",
+    "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0", "pytest-asyncio>=0.23"]
+
+[project.scripts]
+keychecker = "keychecker.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/GodzofWar/KeyChecker"
+
+[tool.setuptools.packages.find]
+include = ["keychecker*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

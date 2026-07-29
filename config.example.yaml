@@ -1,0 +1,39 @@
+# KeyChecker config — copy to config.yaml and fill in your keys.
+# config.yaml is git-ignored so your keys never get committed.
+#
+# Each service maps to either a single credential set or a LIST of sets
+# (handy for checking many keys at once). Fields per service:
+#
+#   shodan          key
+#   censys          id, secret
+#   fofa            email, key
+#   securitytrails  key
+#   virustotal      key
+#   binaryedge      key
+#   zoomeye         key
+#   hunter          key
+#   greynoise       key
+#
+# See `keychecker --list` for the authoritative list.
+
+shodan:
+  - key: "YOUR_SHODAN_KEY"
+  - key: "ANOTHER_SHODAN_KEY"        # check several at once
+
+censys:
+  - id: "YOUR_CENSYS_API_ID"
+    secret: "YOUR_CENSYS_API_SECRET"
+
+fofa:
+  - email: "you@example.com"
+    key: "YOUR_FOFA_KEY"
+
+securitytrails:
+  - key: "YOUR_SECURITYTRAILS_KEY"
+
+virustotal:
+  - key: "YOUR_VT_KEY"
+
+# You can also use the colon-separated shorthand for multi-field services:
+# censys:
+#   - "API_ID:API_SECRET"
