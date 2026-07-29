@@ -7,6 +7,10 @@ the plan and remaining quota for each — across services like Shodan, Censys,
 FOFA, and more. If you juggle a pile of keys across tools, KeyChecker tells you
 in one run which are live, which are dead, and how much quota is left.
 
+It can also **hunt for leaked keys on GitHub** and validate the ones it finds —
+useful for defensive monitoring of your own credentials (see
+[Hunting for leaked keys](#hunting-for-leaked-keys-on-github)).
+
 ## Supported services
 
 | Service | Credential fields | Environment variables |
@@ -95,6 +99,64 @@ FOFA      you@example.com   OK      vip_level=1 points=1000 remain_api_query=300
 
 Exit code is `0` when every checked key is valid, and `1` if any are invalid
 or errored — convenient for cron jobs and CI.
+
+## Hunting for leaked keys on GitHub
+
+The `hunt` subcommand searches public GitHub code for leaked recon API keys
+and can validate the ones it finds by piping them straight into the checkers
+above. The search terms are derived automatically from each service's
+environment-variable names (e.g. `SHODAN_API_KEY`, `VT_API_KEY`), so hunting
+covers every supported service and grows as new ones are added.
+
+> **Authorized use only.** This is meant for defensive monitoring of *your
+> own* leaked credentials and authorized security research. Only handle
+> secrets you are permitted to. Secrets are masked in output by default.
+
+Hunting needs a GitHub token with permission to use the code-search API
+(`--github-token` or `$GITHUB_TOKEN`).
+
+```bash
+# Monitor your own org for leaked keys, and validate anything found:
+keychecker hunt --org your-org --validate
+
+# Scope to a single user or repo:
+keychecker hunt --user alice
+keychecker hunt --repo owner/repo
+
+# Only hunt for specific services:
+keychecker hunt --org your-org --only shodan --only censys
+
+# Run a raw code-search query instead of the built-in dorks:
+keychecker hunt "SHODAN_API_KEY language:python" --show-secrets
+```
+
+Options:
+
+```
+--github-token TOKEN   GitHub token (defaults to $GITHUB_TOKEN); required
+--org / --user / --repo scope the search
+--only SERVICE          hunt only the named service(s); repeatable
+--validate              validate found single-field keys against their service
+--show-secrets          reveal full secrets instead of masking them
+--max-results N         max results per query (default 30)
+--json                  machine-readable output
+```
+
+Example output:
+
+```
+SERVICE  REPOSITORY        PATH             SECRET            VALID
+-------  ----------------  ---------------  ----------------  -----
+Shodan   acme/legacy-tool  scripts/scan.py  abcd********wxyz  BAD
+VirusTotal acme/ci-scripts .env.example     0123********cdef  OK
+
+2 candidate secret(s) found, 1 confirmed VALID
+(secrets masked; pass --show-secrets to reveal)
+```
+
+Multi-field services (Censys, FOFA, PassiveTotal) are surfaced as candidate
+hits but not auto-validated, since a single found value isn't a full
+credential — follow those up manually.
 
 ## Adding a new service
 
