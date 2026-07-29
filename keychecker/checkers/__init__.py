@@ -12,11 +12,19 @@ from .base import BaseChecker
 from .binaryedge import BinaryEdgeChecker
 from .censys import CensysChecker
 from .fofa import FofaChecker
+from .fullhunt import FullHuntChecker
 from .greynoise import GreyNoiseChecker
+from .hibp import HIBPChecker
 from .hunter import HunterChecker
+from .intelx import IntelXChecker
+from .ipinfo import IPinfoChecker
+from .onyphe import OnypheChecker
+from .passivetotal import PassiveTotalChecker
 from .securitytrails import SecurityTrailsChecker
 from .shodan import ShodanChecker
+from .urlscan import UrlscanChecker
 from .virustotal import VirusTotalChecker
+from .whoisxml import WhoisXMLChecker
 from .zoomeye import ZoomEyeChecker
 
 _CHECKER_CLASSES: List[Type[BaseChecker]] = [
@@ -29,6 +37,14 @@ _CHECKER_CLASSES: List[Type[BaseChecker]] = [
     ZoomEyeChecker,
     HunterChecker,
     GreyNoiseChecker,
+    IPinfoChecker,
+    OnypheChecker,
+    PassiveTotalChecker,
+    WhoisXMLChecker,
+    FullHuntChecker,
+    IntelXChecker,
+    UrlscanChecker,
+    HIBPChecker,
 ]
 
 #: Mapping of service name -> checker class.

@@ -51,6 +51,12 @@ def test_label_prefers_non_secret_identifier():
     assert "supersecretkey" not in label
 
 
+def test_label_uses_username_for_passivetotal():
+    label = _label("passivetotal", {"username": "analyst", "key": "supersecretkey"})
+    assert label.startswith("analyst")
+    assert "supersecretkey" not in label
+
+
 def test_load_from_env(monkeypatch):
     monkeypatch.setenv("SHODAN_API_KEY", "envkey123456")
     monkeypatch.delenv("CENSYS_API_ID", raising=False)

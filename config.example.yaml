@@ -13,6 +13,14 @@
 #   zoomeye         key
 #   hunter          key
 #   greynoise       key
+#   ipinfo          token
+#   onyphe          key
+#   passivetotal    username, key
+#   whoisxml        key
+#   fullhunt        key
+#   intelx          key
+#   urlscan         key
+#   hibp            key
 #
 # See `keychecker --list` for the authoritative list.
 

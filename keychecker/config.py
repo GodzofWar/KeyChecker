@@ -30,7 +30,7 @@ def _label(service: str, credentials: Dict[str, str]) -> str:
     """Build a display label that identifies a credential without leaking it."""
     cls = REGISTRY[service]
     # Prefer a human-identifying, non-secret field if present.
-    for ident in ("email", "id"):
+    for ident in ("email", "id", "username"):
         if ident in credentials and ident != cls.fields[-1]:
             return f"{credentials[ident]} ({_mask(credentials[cls.fields[-1]])})"
     return _mask(credentials[cls.fields[-1]])

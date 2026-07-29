@@ -20,6 +20,14 @@ in one run which are live, which are dead, and how much quota is left.
 | ZoomEye | `key` | `ZOOMEYE_API_KEY` |
 | Hunter.io | `key` | `HUNTER_API_KEY` |
 | GreyNoise | `key` | `GREYNOISE_API_KEY` |
+| IPinfo | `token` | `IPINFO_TOKEN` |
+| Onyphe | `key` | `ONYPHE_API_KEY` |
+| PassiveTotal | `username`, `key` | `PASSIVETOTAL_USERNAME`, `PASSIVETOTAL_API_KEY` |
+| WhoisXML API | `key` | `WHOISXML_API_KEY` |
+| FullHunt | `key` | `FULLHUNT_API_KEY` |
+| Intelligence X | `key` | `INTELX_API_KEY` |
+| urlscan.io | `key` | `URLSCAN_API_KEY` |
+| Have I Been Pwned | `key` | `HIBP_API_KEY` |
 
 Run `keychecker --list` for the current list.
 
