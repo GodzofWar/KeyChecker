@@ -13,6 +13,7 @@ from .binaryedge import BinaryEdgeChecker
 from .censys import CensysChecker
 from .fofa import FofaChecker
 from .fullhunt import FullHuntChecker
+from .github import GitHubChecker
 from .greynoise import GreyNoiseChecker
 from .hibp import HIBPChecker
 from .hunter import HunterChecker
@@ -45,6 +46,7 @@ _CHECKER_CLASSES: List[Type[BaseChecker]] = [
     IntelXChecker,
     UrlscanChecker,
     HIBPChecker,
+    GitHubChecker,
 ]
 
 #: Mapping of service name -> checker class.

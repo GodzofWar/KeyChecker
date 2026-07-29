@@ -32,6 +32,7 @@ useful for defensive monitoring of your own credentials (see
 | Intelligence X | `key` | `INTELX_API_KEY` |
 | urlscan.io | `key` | `URLSCAN_API_KEY` |
 | Have I Been Pwned | `key` | `HIBP_API_KEY` |
+| GitHub | `token` | `GITHUB_TOKEN` |
 
 Run `keychecker --list` for the current list.
 

@@ -21,6 +21,7 @@
 #   intelx          key
 #   urlscan         key
 #   hibp            key
+#   github          token
 #
 # See `keychecker --list` for the authoritative list.
 
