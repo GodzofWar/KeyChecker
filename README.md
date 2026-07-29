@@ -1,5 +1,7 @@
 # KeyChecker
 
+[![CI](https://github.com/GodzofWar/KeyChecker/actions/workflows/ci.yml/badge.svg)](https://github.com/GodzofWar/KeyChecker/actions/workflows/ci.yml)
+
 Quickly check whether your recon / OSINT **API keys are still valid** — and see
 the plan and remaining quota for each — across services like Shodan, Censys,
 FOFA, and more. If you juggle a pile of keys across tools, KeyChecker tells you
