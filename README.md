@@ -120,27 +120,45 @@ and candidates are constrained to Shodan's real key shape (32 alphanumerics),
 so URLs and code that merely mention a key still surface it while obvious
 non-keys are filtered out. Scope any hunt to Shodan with `--only shodan`.
 
-> **Authorized use only.** This is meant for defensive monitoring of *your
-> own* leaked credentials and authorized security research. Only handle
-> secrets you are permitted to. Secrets are masked in output by default.
+> **Authorized use only.** This is meant for defensive monitoring and
+> authorized security research — finding exposed keys (your own, or others'
+> to report responsibly). Don't *use* a key you aren't permitted to. Secrets
+> are masked in output by default.
 
 Hunting needs a GitHub token with permission to use the code-search API
 (`--github-token` or `$GITHUB_TOKEN`).
 
-```bash
-# Monitor your own org for leaked keys, and validate anything found:
-keychecker hunt --org your-org --validate
+The `--org`/`--user`/`--repo` flags only *narrow* the search. **Omit them and
+the hunt covers all public GitHub code** — the same broad discovery that
+scanners like `trufflehog`, `gitleaks`, and GitHub's own secret scanning do.
 
-# Scope to a single user or repo:
+```bash
+# Hunt ALL of public GitHub for leaked Shodan keys:
+keychecker hunt --only shodan
+
+# Same, as machine-readable JSON (includes the source URL of each hit):
+keychecker hunt --only shodan --json
+
+# Narrow to an org/user/repo you own, and validate anything found:
+keychecker hunt --org your-org --validate
 keychecker hunt --user alice
 keychecker hunt --repo owner/repo
 
 # Only hunt for specific services:
-keychecker hunt --org your-org --only shodan --only censys
+keychecker hunt --only shodan --only censys
 
 # Run a raw code-search query instead of the built-in dorks:
 keychecker hunt "SHODAN_API_KEY language:python" --show-secrets
 ```
+
+> **Finding vs. using.** Discovering exposed keys across GitHub is legitimate
+> security research, and reporting them to the owner (or to
+> [GitHub](https://docs.github.com/code-security/secret-scanning)) is the
+> responsible next step. `--validate`, though, authenticates to the service
+> *with the found key* — fine for a key you own, but for someone else's key
+> that is using a credential you have no authorization to use. Leave
+> `--validate` off when hunting keys that aren't yours; the hit (repo, path,
+> and source URL) is what you need to report the leak.
 
 Options:
 
