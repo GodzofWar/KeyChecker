@@ -109,6 +109,17 @@ above. The search terms are derived automatically from each service's
 environment-variable names (e.g. `SHODAN_API_KEY`, `VT_API_KEY`), so hunting
 covers every supported service and grows as new ones are added.
 
+Some services also teach the hunter the *specific shapes* their keys leak in,
+beyond the env-var name. **Shodan**, for example, is matched in all of these:
+
+- `SHODAN_API_KEY = "…"` (and `shodan_api_key`, `SHODAN-KEY`, … variants)
+- keys embedded in `https://api.shodan.io/…?key=…` request URLs
+- keys passed to the official SDK, `shodan.Shodan("…")`
+
+and candidates are constrained to Shodan's real key shape (32 alphanumerics),
+so URLs and code that merely mention a key still surface it while obvious
+non-keys are filtered out. Scope any hunt to Shodan with `--only shodan`.
+
 > **Authorized use only.** This is meant for defensive monitoring of *your
 > own* leaked credentials and authorized security research. Only handle
 > secrets you are permitted to. Secrets are masked in output by default.
@@ -190,6 +201,12 @@ class ExampleChecker(BaseChecker):
 
 Then register it in `keychecker/checkers/__init__.py`. The config key, env-var
 wiring, and `--example` CLI flag are all generated from that metadata.
+
+To make `hunt` smarter about your service's leaks, optionally declare
+`hunt_queries` (extra GitHub search terms), `hunt_patterns` (extraction
+regexes, each with one capture group = the secret), and `secret_regex` (a
+shape a candidate must fully match). See `keychecker/checkers/shodan.py` for a
+worked example.
 
 ## Notes
 

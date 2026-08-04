@@ -15,6 +15,23 @@ class ShodanChecker(BaseChecker):
     env_vars = {"key": "SHODAN_API_KEY"}
     help = "Shodan API key"
 
+    # Shodan keys are 32 alphanumeric characters. They leak most often
+    # embedded in api.shodan.io request URLs or passed to the official
+    # Python SDK (`shodan.Shodan("...")`), not just as SHODAN_API_KEY=...
+    hunt_queries = ("api.shodan.io", "shodan.Shodan")
+    # The trailing (?![A-Za-z0-9]) keeps a longer token from matching as a
+    # 32-char prefix (a 40-char value should not be mistaken for a key).
+    hunt_patterns = (
+        # ...api.shodan.io/shodan/host/search?key=<KEY>...
+        r'api\.shodan\.io[^\s"\'<>]*[?&]key=([A-Za-z0-9]{32})(?![A-Za-z0-9])',
+        # shodan.Shodan("<KEY>") / Shodan('<KEY>')
+        r'[Ss]hodan\(\s*["\']([A-Za-z0-9]{32})["\']',
+        # shodan_api_key / SHODAN-API-KEY / shodankey : "<KEY>"
+        r'shodan[_\-]?api[_\-]?key["\']?\s*[:=,]\s*["\']?([A-Za-z0-9]{32})(?![A-Za-z0-9])',
+        r'shodan[_\-]?key["\']?\s*[:=,]\s*["\']?([A-Za-z0-9]{32})(?![A-Za-z0-9])',
+    )
+    secret_regex = r"[A-Za-z0-9]{32}"
+
     async def check(self, client: httpx.AsyncClient) -> CheckResult:
         key = self.credentials["key"]
         try:

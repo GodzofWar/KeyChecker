@@ -11,7 +11,7 @@ from typing import List, Optional
 from . import __version__
 from .checkers import REGISTRY
 from .config import gather_jobs
-from .hunt import default_dorks, hunt, validate_hits
+from .hunt import hunt, validate_hits
 from .models import ERROR, INVALID, VALID
 from .output import (
     render_hits_json,
@@ -188,11 +188,10 @@ def _run_hunt(args) -> int:
         )
         return 2
 
-    dorks = default_dorks(only=args.only)
     hits = asyncio.run(
         hunt(
             token=token,
-            dorks=dorks,
+            only=args.only,
             raw_query=args.query,
             qualifiers=_build_qualifiers(args),
             max_results=args.max_results,
