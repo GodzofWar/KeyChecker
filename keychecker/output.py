@@ -98,9 +98,13 @@ def render_hits_table(hits, stream=sys.stdout, show_secrets: bool = False) -> No
     for h in hits:
         secret = h.secret if show_secrets else _mask_secret(h.secret)
         status = _SYMBOLS.get(h.validation, "-") if h.validation else "-"
-        rows.append((_display_name(h.service), h.repository, h.path, secret, status))
+        rows.append(
+            (_display_name(h.service), h.repository, h.path, secret, status, h.url)
+        )
 
-    headers = ("SERVICE", "REPOSITORY", "PATH", "SECRET", "VALID")
+    headers = ("SERVICE", "REPOSITORY", "PATH", "SECRET", "VALID", "URL")
+    status_col = 4
+    url_col = 5
     widths = [len(x) for x in headers]
     for row in rows:
         for i, cell in enumerate(row):
@@ -114,8 +118,13 @@ def render_hits_table(hits, stream=sys.stdout, show_secrets: bool = False) -> No
             text = str(cell)
             if i in (1, 2) and len(text) > widths[i]:
                 text = "…" + text[-(widths[i] - 1) :]
+            # The URL is the last column; leave it full-length (unpadded) so it
+            # stays clickable and copy-pasteable.
+            if i == url_col:
+                out.append(text)
+                continue
             padded = text.ljust(widths[i])
-            if colorize and i == 4 and color and cell in _COLORS:
+            if colorize and i == status_col and color and cell in _COLORS:
                 padded = f"{_COLORS[cell]}{padded}{_RESET}"
             out.append(padded)
         return "  ".join(out)

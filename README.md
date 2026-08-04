@@ -175,14 +175,17 @@ Options:
 Example output:
 
 ```
-SERVICE  REPOSITORY        PATH             SECRET            VALID
--------  ----------------  ---------------  ----------------  -----
-Shodan   acme/legacy-tool  scripts/scan.py  abcd********wxyz  BAD
-VirusTotal acme/ci-scripts .env.example     0123********cdef  OK
+SERVICE  REPOSITORY        PATH             SECRET            VALID  URL
+-------  ----------------  ---------------  ----------------  -----  ---
+Shodan   acme/legacy-tool  scripts/scan.py  abcd********wxyz  BAD    https://github.com/acme/legacy-tool/blob/main/scripts/scan.py
+VirusTotal acme/ci-scripts .env.example     0123********cdef  OK     https://github.com/acme/ci-scripts/blob/main/.env.example
 
 2 candidate secret(s) found, 1 confirmed VALID
 (secrets masked; pass --show-secrets to reveal)
 ```
+
+The `URL` column links straight to the leaked line on GitHub — the pointer you
+need to report an exposure.
 
 Multi-field services (Censys, FOFA, PassiveTotal) are surfaced as candidate
 hits but not auto-validated, since a single found value isn't a full
