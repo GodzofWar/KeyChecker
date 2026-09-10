@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import ClassVar, Dict, Sequence
+from typing import ClassVar, Dict, Optional, Sequence
 
 import httpx
 
@@ -31,6 +31,25 @@ class BaseChecker:
 
     #: One-line help shown next to the generated CLI flag.
     help: ClassVar[str] = ""
+
+    # -- leak-hunting metadata (optional) -------------------------------
+    #
+    # The ``hunt`` subcommand searches GitHub for each service's env-var
+    # names by default. A service can widen that net by declaring extra,
+    # higher-signal search terms and extraction patterns for the shapes its
+    # keys actually leak in (URLs, SDK idioms, alternate variable names).
+
+    #: Extra GitHub code-search terms to look for, beyond the env-var names.
+    hunt_queries: ClassVar[Sequence[str]] = ()
+
+    #: Extra extraction regexes, each with ONE capture group = the secret.
+    #: Applied (case-insensitively) to every search result for this service.
+    hunt_patterns: ClassVar[Sequence[str]] = ()
+
+    #: Optional regex a candidate must fully match to be kept. Use this to
+    #: pin a service's known key shape (e.g. Shodan's 32 alphanumerics) so
+    #: broad matches don't yield junk. ``None`` means "no shape constraint".
+    secret_regex: ClassVar[Optional[str]] = None
 
     def __init__(self, credentials: Dict[str, str], label: str = ""):
         self.credentials = credentials

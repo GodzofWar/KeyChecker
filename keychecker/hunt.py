@@ -5,6 +5,12 @@ the secret-shaped environment variables KeyChecker already knows about (e.g.
 ``SHODAN_API_KEY``), extracts candidate secrets from the matched fragments, and
 can optionally validate them with the existing service checkers.
 
+On top of the env-var dorks, a checker can declare service-specific
+``hunt_queries``/``hunt_patterns``/``secret_regex`` (see ``BaseChecker``) to
+catch the shapes its keys really leak in — Shodan keys, for instance, show up
+inside ``api.shodan.io`` request URLs and ``shodan.Shodan("...")`` SDK calls,
+not only as ``SHODAN_API_KEY=...``.
+
 Intended for defensive use — monitoring for *your own* leaked credentials and
 authorized security research. Only act on secrets you are permitted to handle.
 """
@@ -13,8 +19,8 @@ from __future__ import annotations
 
 import asyncio
 import re
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from dataclasses import dataclass
+from typing import Dict, List, Optional, Pattern
 
 import httpx
 
@@ -75,17 +81,22 @@ def default_dorks(only: Optional[List[str]] = None) -> Dict[str, List[str]]:
     The environment variables people use to store a key (``SHODAN_API_KEY``,
     ``VT_API_KEY``, ...) are exactly what leaked config tends to name them, so
     they make high-signal search terms — and this stays in sync automatically
-    as new checkers are added.
+    as new checkers are added. Services that declare extra ``hunt_queries``
+    contribute those too.
     """
     dorks: Dict[str, List[str]] = {}
     for name, cls in REGISTRY.items():
         if only and name not in only:
             continue
-        dorks[name] = list(cls.env_vars.values())
+        terms: List[str] = list(cls.env_vars.values())
+        for extra in getattr(cls, "hunt_queries", ()):
+            if extra not in terms:
+                terms.append(extra)
+        dorks[name] = terms
     return dorks
 
 
-def _extraction_regex(keyword: str) -> "re.Pattern[str]":
+def _extraction_regex(keyword: str) -> "Pattern[str]":
     # KEYWORD = "value" / KEYWORD: 'value' / "KEYWORD","value"
     return re.compile(
         re.escape(keyword) + r'["\']?\s*[:=,]\s*["\']?([A-Za-z0-9_\-\.=+/]{16,100})',
@@ -105,13 +116,74 @@ def _looks_like_placeholder(value: str) -> bool:
 
 def extract_secrets(text: str, keyword: str) -> List[str]:
     """Pull candidate secret values assigned to ``keyword`` out of ``text``."""
-    found = []
-    for match in _extraction_regex(keyword).finditer(text):
-        candidate = match.group(1)
-        if _looks_like_placeholder(candidate):
-            continue
-        found.append(candidate)
+    return _extract(text, [_extraction_regex(keyword)])
+
+
+def _extract(
+    text: str,
+    patterns: List["Pattern[str]"],
+    shape: Optional["Pattern[str]"] = None,
+) -> List[str]:
+    """Run each extraction ``pattern`` over ``text`` and keep real-looking hits.
+
+    ``shape``, when given, is a regex a candidate must fully match to be kept —
+    used to pin a service's known key format.
+    """
+    found: List[str] = []
+    for pattern in patterns:
+        for match in pattern.finditer(text):
+            candidate = match.group(1)
+            if _looks_like_placeholder(candidate):
+                continue
+            if shape is not None and not shape.fullmatch(candidate):
+                continue
+            if candidate not in found:
+                found.append(candidate)
     return found
+
+
+@dataclass
+class ServiceProbe:
+    """How to hunt for one service: what to search, and how to extract."""
+
+    service: str
+    queries: List[str]
+    patterns: List["Pattern[str]"]
+    shape: Optional["Pattern[str]"] = None
+
+
+def build_probes(only: Optional[List[str]] = None) -> List[ServiceProbe]:
+    """Assemble the per-service search terms and extraction patterns.
+
+    Each service contributes its env-var names (searched and extracted
+    generically) plus any service-specific ``hunt_queries``/``hunt_patterns``
+    and an optional ``secret_regex`` shape constraint.
+    """
+    probes: List[ServiceProbe] = []
+    for name, cls in REGISTRY.items():
+        if only and name not in only:
+            continue
+
+        queries: List[str] = []
+        patterns: List["Pattern[str]"] = []
+        for env_var in cls.env_vars.values():
+            if env_var not in queries:
+                queries.append(env_var)
+            patterns.append(_extraction_regex(env_var))
+        for extra in getattr(cls, "hunt_queries", ()):
+            if extra not in queries:
+                queries.append(extra)
+        for raw in getattr(cls, "hunt_patterns", ()):
+            patterns.append(re.compile(raw, re.IGNORECASE))
+
+        shape_src = getattr(cls, "secret_regex", None)
+        shape = re.compile(shape_src) if shape_src else None
+        probes.append(
+            ServiceProbe(
+                service=name, queries=queries, patterns=patterns, shape=shape
+            )
+        )
+    return probes
 
 
 class GitHubSearcher:
@@ -164,9 +236,32 @@ def _fragments(item: dict) -> List[str]:
     return texts
 
 
+@dataclass
+class _Search:
+    """A single GitHub query and the probes whose patterns apply to it."""
+
+    query: str  # the raw search term
+    probes: List[ServiceProbe]
+    quote: bool = True
+
+
+def _plan_searches(
+    probes: List[ServiceProbe], raw_query: Optional[str], qualifiers: str
+) -> List[_Search]:
+    if raw_query:
+        # A raw query is searched verbatim; try every selected service's
+        # extractors on whatever it turns up.
+        return [_Search(query=raw_query.strip(), probes=probes, quote=False)]
+    searches: List[_Search] = []
+    for probe in probes:
+        for term in probe.queries:
+            searches.append(_Search(query=term, probes=[probe]))
+    return searches
+
+
 async def hunt(
     token: str,
-    dorks: Dict[str, List[str]],
+    only: Optional[List[str]] = None,
     raw_query: Optional[str] = None,
     qualifiers: str = "",
     max_results: int = 30,
@@ -175,50 +270,36 @@ async def hunt(
 ) -> List[SecretHit]:
     """Run the configured searches and return deduplicated candidate hits."""
     searcher = GitHubSearcher(token, spacing=spacing)
+    probes = build_probes(only=only)
+    searches = _plan_searches(probes, raw_query, qualifiers)
+
     seen = set()
     hits: List[SecretHit] = []
-
-    # (service, keyword, query) tuples to execute.
-    plan = []
-    if raw_query:
-        # A raw query is searched verbatim; try every service's extractors on it.
-        q = f"{raw_query} {qualifiers}".strip()
-        plan.append((None, None, q))
-    else:
-        for service, keywords in dorks.items():
-            for kw in keywords:
-                q = f'"{kw}" {qualifiers}'.strip()
-                plan.append((service, kw, q))
 
     async with httpx.AsyncClient(
         timeout=timeout, headers={"User-Agent": "KeyChecker/0.1"}
     ) as client:
-        for service, keyword, query in plan:
+        for search in searches:
+            if search.quote:
+                query = f'"{search.query}" {qualifiers}'.strip()
+            else:
+                query = f"{search.query} {qualifiers}".strip()
             items = await searcher.search(client, query, max_results)
-            keywords_for_extraction = (
-                [keyword]
-                if keyword
-                else [k for kws in dorks.values() for k in kws]
-            )
-            svc_by_keyword = {
-                k: s for s, kws in dorks.items() for k in kws
-            }
             for item in items:
                 repo = item.get("repository", {}).get("full_name", "?")
                 path = item.get("path", "?")
                 url = item.get("html_url", "")
                 for text in _fragments(item):
-                    for kw in keywords_for_extraction:
-                        for secret in extract_secrets(text, kw):
-                            svc = service or svc_by_keyword.get(kw, "unknown")
-                            dedupe_key = (svc, repo, path, secret)
+                    for probe in search.probes:
+                        for secret in _extract(text, probe.patterns, probe.shape):
+                            dedupe_key = (probe.service, repo, path, secret)
                             if dedupe_key in seen:
                                 continue
                             seen.add(dedupe_key)
                             hits.append(
                                 SecretHit(
-                                    service=svc,
-                                    keyword=kw,
+                                    service=probe.service,
+                                    keyword=search.query,
                                     repository=repo,
                                     path=path,
                                     url=url,
